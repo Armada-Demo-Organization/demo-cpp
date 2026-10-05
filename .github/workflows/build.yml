@@ -35,7 +35,7 @@ jobs:
 
       - name: SonarQube analysis
         run: |
-          sonar-scanner --define sonar.cfamily.build-wrapper-output=bw-output
+          sonar-scanner --define sonar.cfamily.build-wrapper-output=bw-output --define sonar.projectKey=armada-demo_demo-cpp
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
