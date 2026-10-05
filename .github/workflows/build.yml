@@ -1,48 +1,48 @@
+# The pinned sonar-scanner-cli 5.0.1 ships its OWN bundled JRE 17, so setting
+# JAVA_HOME had no effect and the scanner kept failing with
+#   "Java 17 is not supported. Please upgrade to Java 21 or newer".
+# sonarqube-scan-action auto-provisions a matching JRE from the server, so
+# the manual download is gone entirely.
 name: C/C++ CI
-
-on:
-  workflow_dispatch:
-  push:
-    branches: ["main", "feature/*"]
-  pull_request:
-    branches: ["main"]
-
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     permissions: read-all
     steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
-      # ubuntu-latest defaults to Java 17; the scanner refuses with
-      # "Java 17 is not supported. Please upgrade to Java 21 or newer".
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          java-version: '21'
-          distribution: 'zulu'
-      - name: Download and install the build wrapper, build the project
-        run: |
-          mkdir $HOME/.sonar
-          curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${{ secrets.SONAR_HOST_URL }}/static/cpp/build-wrapper-linux-x86.zip
-          unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
-          $HOME/.sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: zulu
+    - name: Download and install the build wrapper, build the project
+      run: 'mkdir $HOME/.sonar
 
-      - name: Download and install the SonarScanner
-        env:
-          SONAR_SCANNER_VERSION: 5.0.1.3006
-        run: |
-          curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
-          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-          echo "$HOME/.sonar/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin" >> $GITHUB_PATH
+        curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${{ secrets.SONAR_HOST_URL }}/static/cpp/build-wrapper-linux-x86.zip
 
-      - name: SonarQube analysis
-        run: |
-          sonar-scanner --define sonar.cfamily.build-wrapper-output=bw-output --define sonar.projectKey=armada-demo_demo-cpp
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
+
+        $HOME/.sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make
+
+        '
+      env:
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    - name: SonarQube analysis
+      uses: sonarsource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      with:
+        args: -Dsonar.cfamily.build-wrapper-output=bw-output -Dsonar.projectKey=armada-demo_demo-cpp
+'on':
+  workflow_dispatch: null
+  push:
+    branches:
+    - main
+    - feature/*
+  pull_request:
+    branches:
+    - main
